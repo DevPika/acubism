@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>A-Cubism</title>
+    <meta name="description" content="A-Cubism">
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-super-keyboard@2.1.0/dist/aframe-super-keyboard.min.js"></script>
+    <script src="https://unpkg.com/super-hands/dist/super-hands.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.0.1/dist/aframe-physics-system.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@^4.1.1/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-physics-extras/dist/aframe-physics-extras.min.js"></script>
+
+    <!-- <script src="./lib/aframe.min.js"></script>
+    <script src="./lib/aframe-super-keyboard.min.js"></script>
+    <script src="./lib/super-hands.min.js"></script>
+    <script src="./lib/aframe-physics-system.js"></script>
+    <script src="./lib/aframe-event-set-component.min.js"></script>
+    <script src="./lib/aframe-physics-extras.min.js"></script> -->
+
+    <script src="./js/components.js"></script>
+    <script src="./js/puzzle.js"></script>
+
+  </head>
+  <body>
+    <a-scene physics="debug: true; gravity: 0">
+      <a-assets>
+        <a-mixin id="touch"
+                 physics-collider phase-shift
+                 collision-filter="collisionForces: false"
+                 body="type: static; shape: none;"
+                 shape__off="shape: box;
+                               halfExtents: 0.005 0.005 0.005;
+                               offset: 0 0 -0.11;"
+                 super-hands="colliderEvent: collisions;
+                              colliderEventProperty: els;
+                              colliderEndEvent: collisions;
+                              colliderEndEventProperty: clearedEls;">
+        </a-mixin>
+        <a-mixin id="piece-body-init" hoverable grabbable 
+                 stretchable draggable sleepy>
+        </a-mixin>
+        <a-mixin id="gripper" material="color: black" geometry="primitive: cone; radiusBottom: 0.2;
+                 radiusTop: 0.05; height: 0.8" scale="0.02 0.02 0.02">
+        </a-mixin>
+        <a-mixin id="animLeft"
+                animation__gripOpen="property: rotation; to: 0 0 15; startEvents: onmousedown; dur: 150" 
+                animation__gripClose="property: rotation; to: 0 0 -15; startEvents: onmouseup; dur: 150">
+        </a-mixin>
+        <a-mixin id="animRight"
+                animation__gripOpen="property: rotation; to: 0 0 -15; easing: linear; startEvents: onmousedown; dur: 150" 
+                animation__gripClose="property: rotation; to: 0 0 15; startEvents: onmouseup; dur: 150">
+        </a-mixin>
+      </a-assets>
+
+      <a-camera id="mouseCursor" position="0.1 1 0.5" look-controls cursor="rayOrigin: mouse"></a-camera>
+      <a-entity id="rhand" mixin="touch" puzzle-listen
+                  hand-controls="hand: right">
+        <a-entity geometry="primitive: sphere; radius: 0.008" position="0 0 -0.11" material="color: #646464"></a-entity>
+        <!-- <a-box depth="0.02" height="0.02" width="0.02" position="0 0 -0.11" material="color: #FCFF8D"></a-entity>  -->
+        <!-- <a-cone position="-0.002 0 -0.11" mixin="gripper animLeft" ></a-cone>
+        <a-cone position="0.002 0 -0.11" mixin="gripper animRight"></a-cone> -->
+      </a-entity>
+      
+      <a-entity id="lhand" laser-controls="hand: left"></a-entity>
+
+      <a-sky color="#ECECEC"></a-sky>
+
+      <!-- Use hand: #mouseCursor for debugging keyboard on a desktop browser -->
+      <a-entity id="keyboard" super-keyboard="hand: #lhand; imagePath:./assets/kbd/;
+                multipleInputs: true; label: Enter name of level to load" position="-0.8 0.6 0.5" rotation="-30 90 0">
+      </a-entity>
+
+      <!-- Use for debugging inside VR -->
+      <!-- <a-entity id="log" position="1 0.9 0.5" rotation="-30 -90 0" text="value: Hello World; color: black" ></a-entity> -->
+      
+      <a-entity id="puzzle" position="0 0.8 0">
+        <a-entity line__x="start: 0 0 0; end: 0.8 0 0" line__y="start: 0 0 0; end: 0 0.8 0; color: #00c100" line__z="start: 0 0 0; end: 0 0 0.8; color: #df0000"></a-entity> 
+        <a-plane position="0.4 0 0.4" rotation="-90 0 0" width="0.8" height="0.8" color="#7BC8A4"></a-plane>
+      </a-entity>
+
+    </a-scene>
+
+    <script type="text/javascript">
+      let kbd = document.querySelector('#keyboard');
+
+      kbd.addEventListener('superkeyboardinput', ()=> {
+        puzzleName = kbd.components["super-keyboard"].data.value;
+        LoadPuzzleByName(puzzleName);
+        // Use for debugging inside VR
+        // var logEl = document.querySelector('#log');
+        // logEl.setAttribute("text", "value: gg; color: black");
+      })
+    </script>
+  </body>
+</html>
