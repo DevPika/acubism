@@ -44,22 +44,20 @@
                  radiusTop: 0.05; height: 0.8" scale="0.02 0.02 0.02">
         </a-mixin>
         <a-mixin id="animLeft"
-                animation__gripOpen="property: rotation; to: 0 0 15; startEvents: onmousedown; dur: 150" 
-                animation__gripClose="property: rotation; to: 0 0 -15; startEvents: onmouseup; dur: 150">
+                 animation__gripOpen="property: rotation; to: -90 0 -15; startEvents: gd; dur: 150"
+                 animation__gripClose="property: rotation; to: -90 0 0; startEvents: gu; dur: 150">
         </a-mixin>
         <a-mixin id="animRight"
-                animation__gripOpen="property: rotation; to: 0 0 -15; easing: linear; startEvents: onmousedown; dur: 150" 
-                animation__gripClose="property: rotation; to: 0 0 15; startEvents: onmouseup; dur: 150">
+                 animation__gripOpen="property: rotation; to: -90 0 15; startEvents: gd; dur: 150"
+                 animation__gripClose="property: rotation; to: -90 0 0; startEvents: gu; dur: 150">
         </a-mixin>
       </a-assets>
 
       <a-camera id="mouseCursor" position="0.1 1 0.5" look-controls cursor="rayOrigin: mouse"></a-camera>
-      <a-entity id="rhand" mixin="touch" puzzle-listen
-                  hand-controls="hand: right">
-        <a-entity geometry="primitive: sphere; radius: 0.008" position="0 0 -0.11" material="color: #646464"></a-entity>
-        <!-- <a-box depth="0.02" height="0.02" width="0.02" position="0 0 -0.11" material="color: #FCFF8D"></a-entity>  -->
-        <!-- <a-cone position="-0.002 0 -0.11" mixin="gripper animLeft" ></a-cone>
-        <a-cone position="0.002 0 -0.11" mixin="gripper animRight"></a-cone> -->
+
+      <a-entity id="rhand" mixin="touch" puzzle-listen anim-grippers-listen hand-controls="hand: right">
+        <a-cone id="left-gripper"  position="-0.003 0 -0.11" rotation="-90 0 0" mixin="gripper animLeft" ></a-cone>
+        <a-cone id="right-gripper" position=" 0.003 0 -0.11" rotation="-90 0 0" mixin="gripper animRight"></a-cone>
       </a-entity>
       
       <a-entity id="lhand" laser-controls="hand: left"></a-entity>

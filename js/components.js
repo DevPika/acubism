@@ -227,6 +227,29 @@ AFRAME.registerComponent('puzzle-listen', {
   }
 });
 
+AFRAME.registerComponent('anim-grippers-listen', {
+    init: function () {
+      var lg = document.querySelector("#left-gripper");
+      var rg = document.querySelector("#right-gripper");
+
+      function selectStart() {
+        lg.emit("gd");
+        rg.emit("gd");
+      }
+
+      function selectEnd() {
+        lg.emit("gu");
+        rg.emit("gu");
+      }
+
+      this.el.addEventListener('gripdown', selectStart);
+      this.el.addEventListener('triggerdown', selectStart);
+
+      this.el.addEventListener('gripup', selectEnd);
+      this.el.addEventListener('triggerup', selectEnd);
+  },
+});
+
 // Turn controller's physics presence on only while button held down
 AFRAME.registerComponent('phase-shift', {
     init: function () {
