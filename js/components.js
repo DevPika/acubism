@@ -175,7 +175,6 @@ AFRAME.registerComponent('piece', {
     // piece state variables for ghost actions
     self.isGrabbed = false;
     self.isCollidingWithGrid = false;
-    self.lastGridCollided = 0;
     self.isGhostActive = false;
 
     // initialize ghost mesh for this piece
@@ -207,7 +206,19 @@ AFRAME.registerComponent('piece', {
       if (e.detail.body.el.id === "grid") {
         console.log('Piece collided with grid');
         self.isCollidingWithGrid = true;
-        self.lastGridCollided = Date.now();
+      }
+    });
+
+    // Collision exit
+    // https://github.com/pmndrs/cannon-es/blob/28248468d27496ff3b029aa141b0a930505f8ac3/examples/trigger.html#L54-L62
+    var currWorld = this.el.sceneEl.systems.physics.driver.world;
+    currWorld.addEventListener('endContact', (event) => {
+      if (
+        (event.bodyA === gridEl.body && event.bodyB === self.el.body) ||
+        (event.bodyB === self.el.body && event.bodyA === gridEl.body)
+      ) {
+        console.log('The piece exited the grid!', event);
+        self.isCollidingWithGrid = false;
       }
     });
   },
@@ -281,13 +292,6 @@ AFRAME.registerComponent('piece', {
 
   tick: function(time, deltaTime) {
     var self = this;
-
-    // Collision timeout
-    // TODO collision events not fired as frequently so another solution?
-    if (self.isCollidingWithGrid && (Date.now() - self.lastGridCollided > 1000)) {
-      self.isCollidingWithGrid = false;
-      console.log("collision timeout");
-    }
 
     if (self.isGrabbed && self.isCollidingWithGrid) {
       if (!self.isGhostActive) {
