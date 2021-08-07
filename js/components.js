@@ -1,18 +1,17 @@
 /* globals AFRAME,THREE,CANNON */
 
 function LoadPuzzleByName(puzzleName) {
-    // <a-entity id="pieces-generator" pieces-generator></a-entity>
     ClearPreviousPuzzle();
     let scene = document.querySelector('a-scene');
     let newEl = document.createElement("a-entity");
-    newEl.setAttribute('id', 'pieces-generator');
-    newEl.setAttribute('pieces-generator', '');
+    newEl.setAttribute('id', 'puzzle-generator');
+    newEl.setAttribute('puzzle-generator', '');
     newEl.puzzleUrl = "./puzzles/" + puzzleName + ".cube";
     scene.appendChild(newEl);
 }
 
 
-AFRAME.registerComponent('pieces-generator', {
+AFRAME.registerComponent('puzzle-generator', {
     init: function () {
         var el = this.el;
 
@@ -273,7 +272,7 @@ function GrabMoveReleased(released, parent) {
 }
 
 function ClearPreviousPuzzle() {
-  let elements = document.querySelectorAll('#pieces-generator');
+  let elements = document.querySelectorAll('#puzzle-generator');
   for (var i = elements.length - 1; i >= 0; i--) {
     elements[i].parentNode.removeChild(elements[i]);
   }
