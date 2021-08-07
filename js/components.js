@@ -1,47 +1,78 @@
 /* globals AFRAME,THREE,CANNON */
 
 function LoadPuzzleByName(puzzleName) {
-    ClearPreviousPuzzle();
-    let scene = document.querySelector('a-scene');
-    let newEl = document.createElement("a-entity");
-    newEl.setAttribute('id', 'puzzle-generator');
-    newEl.setAttribute('puzzle-generator', '');
-    newEl.puzzleUrl = "./puzzles/" + puzzleName + ".cube";
-    scene.appendChild(newEl);
+  ClearPreviousPuzzle();
+  let scene = document.querySelector('a-scene');
+  let newEl = document.createElement("a-entity");
+  newEl.setAttribute('id', 'puzzle-generator');
+  newEl.setAttribute('puzzle-generator', '');
+  newEl.puzzleUrl = "./puzzles/" + puzzleName + ".cube";
+  scene.appendChild(newEl);
 }
 
 
 AFRAME.registerComponent('puzzle-generator', {
-    init: function () {
-        var el = this.el;
+  init: function () {
+    var el = this.el;
+    var self = this;
+    var CELL_SIZE = 0.04;
 
-        // url set by LoadPuzzleByName function
-        let requestURL = this.el.puzzleUrl;
-        // let requestURL = 'https://github.com/cubismvr/Mods/raw/main/CustomPuzzles/Example.cube';
-        let request = new XMLHttpRequest();
-        request.onload = function() {
-          //sample = request.response;
-          var sample = request.response;
-          for (var i = 0; i < sample.pieces.length; i++) {
-            var newEl = document.createElement("a-entity");
-            newEl.setAttribute('mixin', 'piece-body-init');
-            newEl.setAttribute('piece', '');
-            newEl.setAttribute('class', 'piece');
-            // IMPORTANT dynamic-body component removal does not work if set in mixin, so setting attributes separately
-            newEl.setAttribute('body', 'type: dynamic; shape: none;');
-            newEl.setAttribute('shape__off', 'shape: box; halfExtents: 1 1 1;');
-            newEl.pieceInitPos = new THREE.Vector3(0.2 + (i * 0.5), 1, 0.2 );
-            newEl.pieceData = sample.pieces[i];
-            newEl.pieceSize = 0.04;
+    // url set by LoadPuzzleByName function
+    let requestURL = this.el.puzzleUrl;
+    // let requestURL = 'https://github.com/cubismvr/Mods/raw/main/CustomPuzzles/Example.cube';
+    let request = new XMLHttpRequest();
+    request.onload = function() {
+      //sample = request.response;
+      var sample = request.response;
 
-            el.appendChild(newEl);
-          }
-          
-        }
-        request.open('GET', requestURL);
-        request.responseType = 'json';
-        request.send();
-    },
+      // generate grid
+      var gridEl = document.createElement("a-entity");
+      gridEl.setAttribute('id', 'grid');
+      gridEl.setAttribute('body', 'type: static; shape: none;');
+      gridEl.setAttribute('shape__off', 'shape: box; halfExtents: 1 1 1;');
+
+      gridEl.addEventListener("body-loaded", () => {
+        gridEl.body.position.set(0.4, 1, 0.2);
+        gridEl.setAttribute('collision-filter', {collisionForces: false});
+        ClearPhysicsShapes(gridEl);
+        self.createPhysicsGrid(gridEl, sample.grid, CELL_SIZE);
+        // TODO shader material for grid
+        // var gridMesh = self.createGeometry(gridEl.body, null);
+        // gridEl.setObject3D("grid", gridMesh);
+      })
+      el.appendChild(gridEl);
+
+      // create individual piece generators
+      for (var i = 0; i < sample.pieces.length; i++) {
+        var newEl = document.createElement("a-entity");
+        newEl.setAttribute('mixin', 'piece-body-init');
+        newEl.setAttribute('piece', '');
+        newEl.setAttribute('class', 'piece');
+        // IMPORTANT dynamic-body component removal does not work if set in mixin, so setting attributes separately
+        newEl.setAttribute('body', 'type: dynamic; shape: none;');
+        newEl.setAttribute('shape__off', 'shape: box; halfExtents: 1 1 1;');
+        newEl.pieceInitPos = new THREE.Vector3(0.2 + (i * 0.5), 1, 0.2 );
+        newEl.pieceData = sample.pieces[i];
+        newEl.pieceSize = CELL_SIZE;
+
+        el.appendChild(newEl);
+      }
+    }
+    request.open('GET', requestURL);
+    request.responseType = 'json';
+    request.send();
+  },
+
+
+  createPhysicsGrid: function(gridEl, gridLocs, gridCellSize) {
+    var s = gridCellSize;
+    console.log(s);
+    var shape = new CANNON.Box(new CANNON.Vec3(0.5*s,0.5*s,0.5*s));
+    gridLocs.forEach((cell) => {
+      var pos = cell.localPos;
+      gridEl.body.addShape( shape, new CANNON.Vec3( pos.x*s, pos.y*s, pos.z*s));
+    })
+  }
 });
 
 
@@ -52,10 +83,16 @@ AFRAME.registerComponent('piece', {
     })
   },
 
+
   createGeometry : function(body, pieceColor){
-    var hexStr = ("0x" + pieceColor).toLowerCase();
-    var hexNum = parseInt(hexStr,16)
-    var material = new THREE.MeshLambertMaterial( {color: hexNum} );
+    var material = null;
+    if (pieceColor) {
+      var hexStr = ("0x" + pieceColor).toLowerCase();
+      var hexNum = parseInt(hexStr,16)
+      material = new THREE.MeshLambertMaterial( {color: hexNum} );
+    } else { // Can be used for grid
+      material = new THREE.MeshBasicMaterial( {wireframe: true} );
+    }
 
     var geom = new THREE.Geometry();
 
@@ -96,17 +133,6 @@ AFRAME.registerComponent('piece', {
     return new THREE.Mesh(geom, material);
   },
 
-  // adapted from https://schteppe.github.io/cannon.js/docs/files/src_objects_Body.js.html#l507
-  // https://schteppe.github.io/cannon.js/docs/classes/Body.html#method_addShape
-  clearShape: function(element){
-    element.body.shapes.length = 0;
-    element.body.shapeOffsets.length = 0;
-    element.body.shapeOrientations.length = 0;
-    element.body.updateMassProperties();
-    element.body.updateBoundingRadius();
-
-    element.body.aabbNeedsUpdate = true;
-  },
 
   createPhysicsBody: function(element, segments) {
     var s = this.el.pieceSize;;
@@ -117,12 +143,13 @@ AFRAME.registerComponent('piece', {
     }
   },
 
+
   generatePiece: function(puzzlePiece, pos) {
     var self = this;
     // TODO For some reason create a completely new body is not working
     // So take element with physics body, clear and then add new shapes
     var posC = new CANNON.Vec3(pos.x,pos.y,pos.z)
-    this.clearShape(this.el);
+    ClearPhysicsShapes(this.el);
     this.createPhysicsBody(this.el, puzzlePiece.segments);
     this.el.body.position = posC;
     this.el.body.quaternion.setFromEuler(0, 0, 0);
@@ -145,29 +172,87 @@ AFRAME.registerComponent('piece', {
     });
 
     // Show or hide ghost of this piece snapped to a global grid
+    // piece state variables for ghost actions
+    self.isGrabbed = false;
+    self.isCollidingWithGrid = false;
+    self.lastGridCollided = 0;
+    self.isGhostActive = false;
+
+    // initialize ghost mesh for this piece
     var ghostEl = document.querySelector('#snap-ghost');
     self.snapGhostEl = ghostEl;
-    self.isGrabbed = false;
+    var ghostMesh = newMesh.clone();
+    ghostMesh.visible = true;
+    ghostMesh.material = newMesh.material.clone();
+    ghostMesh.material.opacity = 0.5;
+    ghostMesh.material.transparent = true;
+    self.snapGhostMesh = ghostMesh;
+
 
     this.el.addEventListener('grab-start', function (e) {
-      var insideGrid = true; // TODO method for checking if inside grid
-      if (insideGrid) {
-        var ghostMesh = newMesh.clone();
-        ghostMesh.visible = true;
-        ghostMesh.material = newMesh.material.clone();
-        ghostMesh.material.opacity = 0.3;
-        ghostMesh.material.transparent = true;
-        ghostEl.setObject3D("mesh", ghostMesh);
-        self.isGrabbed = true;
-      }
+      self.isGrabbed = true;
+      self.el.setAttribute('collision-filter', {collisionForces: true});
     });
 
     this.el.addEventListener('grab-end', function (e) {
       self.isGrabbed = false;
-      ghostEl.getObject3D("mesh").visible = false;
-      // TODO move the actual piece to the correct grid location
+      if (self.isGhostActive) {
+        self.disableGhost();
+        self.snapPiece();
+      }
     });
 
+    var gridEl = document.querySelector("#grid");
+    this.el.addEventListener('collide', function (e) {
+      if (e.detail.body.el.id === "grid") {
+        console.log('Piece collided with grid');
+        self.isCollidingWithGrid = true;
+        self.lastGridCollided = Date.now();
+      }
+    });
+  },
+
+
+  snapPiece: function() {
+    // adapted from https://github.com/schteppe/cannon.js/issues/215
+    var self = this;
+
+    let pbody = self.el.body;
+    // Position
+    pbody.position.setZero();
+    pbody.previousPosition.setZero();
+    pbody.interpolatedPosition.setZero();
+    pbody.initPosition.setZero();
+
+    // orientation
+    pbody.quaternion.set(0,0,0,1);
+    pbody.initQuaternion.set(0,0,0,1);
+    pbody.previousQuaternion.set(0,0,0,1);
+    pbody.interpolatedQuaternion.set(0,0,0,1);
+
+    // Velocity
+    pbody.velocity.setZero();
+    pbody.initVelocity.setZero();
+    pbody.angularVelocity.setZero();
+    pbody.initAngularVelocity.setZero();
+
+    // Force
+    pbody.force.setZero();
+    pbody.torque.setZero();
+
+    // Sleep state reset
+    pbody.sleepState = 0;
+    pbody.timeLastSleepy = 0;
+    pbody._wakeUpAfterNarrowphase = false;
+
+
+    // move piece to ghost location to insert in grid
+    let p = self.snapGhostMesh.position;
+    let q = self.snapGhostMesh.quaternion;
+    self.el.body.position.set(p.x, p.y, p.z);
+    self.el.body.quaternion.set(q.x, q.y, q.z, q.w);
+    self.el.setAttribute('collision-filter', {collisionForces: false});
+    console.log("snapped to grid");
   },
 
 
@@ -196,11 +281,61 @@ AFRAME.registerComponent('piece', {
 
   tick: function(time, deltaTime) {
     var self = this;
-    if (self.isGrabbed === true) {
-      self.snap(self.snapGhostEl, self.el);
+
+    // Collision timeout
+    // TODO collision events not fired as frequently so another solution?
+    if (self.isCollidingWithGrid && (Date.now() - self.lastGridCollided > 1000)) {
+      self.isCollidingWithGrid = false;
+      console.log("collision timeout");
     }
+
+    if (self.isGrabbed && self.isCollidingWithGrid) {
+      if (!self.isGhostActive) {
+        self.enableGhost();
+      }
+      // snap ghost to grid
+      self.snap(self.snapGhostEl, self.el);
+
+    } else {
+      if (self.isGhostActive) {
+        self.disableGhost();
+      }
+    }
+  },
+
+
+  enableGhost: function () {
+    var self = this;
+    self.snapGhostEl.setObject3D("mesh", self.snapGhostMesh);
+    self.snapGhostMesh.visible = true;
+    self.isGhostActive = true;
+    console.log("enable ghost called");
+  },
+
+
+  disableGhost: function () {
+    var self = this;
+    let ghostMesh = self.snapGhostEl.getObject3D("mesh");
+    if (ghostMesh && ghostMesh.visible) {
+      ghostMesh.visible = false;
+    }
+    self.isGhostActive = false;
+    console.log("disable ghost called");
   }
 });
+
+
+// adapted from https://schteppe.github.io/cannon.js/docs/files/src_objects_Body.js.html#l507
+// https://schteppe.github.io/cannon.js/docs/classes/Body.html#method_addShape
+function ClearPhysicsShapes(element){
+  element.body.shapes.length = 0;
+  element.body.shapeOffsets.length = 0;
+  element.body.shapeOrientations.length = 0;
+  element.body.updateMassProperties();
+  element.body.updateBoundingRadius();
+  element.body.aabbNeedsUpdate = true;
+}
+
 
 AFRAME.registerComponent('puzzle-listen', {
   init: function () {
@@ -226,6 +361,7 @@ AFRAME.registerComponent('puzzle-listen', {
   }
 });
 
+
 AFRAME.registerComponent('anim-grippers-listen', {
     init: function () {
       var lg = document.querySelector("#left-gripper");
@@ -249,6 +385,7 @@ AFRAME.registerComponent('anim-grippers-listen', {
   },
 });
 
+
 // Turn controller's physics presence on only while button held down
 AFRAME.registerComponent('phase-shift', {
     init: function () {
@@ -263,13 +400,6 @@ AFRAME.registerComponent('phase-shift', {
     }
 })
 
-function GrabMove(grabbed, grabbedBy) {
-    grabbedBy.object3D.attach(grabbed.object3D);
-}
-
-function GrabMoveReleased(released, parent) {
-    parent.object3D.attach(released.object3D);
-}
 
 function ClearPreviousPuzzle() {
   let elements = document.querySelectorAll('#puzzle-generator');
@@ -277,6 +407,7 @@ function ClearPreviousPuzzle() {
     elements[i].parentNode.removeChild(elements[i]);
   }
 }
+
 
 // Adapted from https://gamedev.stackexchange.com/questions/83601/from-3d-rotation-snap-to-nearest-90-directions/183342#183342
 function ThreeSnappedToNearestAxis(dir) {
@@ -295,6 +426,7 @@ function ThreeSnappedToNearestAxis(dir) {
   }
 }
 
+
 // Adapted from https://gamedev.stackexchange.com/questions/83601/from-3d-rotation-snap-to-nearest-90-directions/183342#183342
 function ThreeSnapToNearestRightAngle(currentRotation) {
   let closestToForward = new THREE.Vector3(0, 0, 0);
@@ -312,6 +444,7 @@ function ThreeSnapToNearestRightAngle(currentRotation) {
   var q = LookRotation(closestToForward, closestToUp);
   return new THREE.Quaternion(q.x, q.y, q.z, q.w);
 }
+
 
 // Adapted from https://gist.github.com/aeroson/043001ca12fe29ee911e
 function LookRotation(forward, up) {
