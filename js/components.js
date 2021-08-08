@@ -35,10 +35,10 @@ AFRAME.registerComponent('puzzle-generator', {
         gridEl.body.position.set(0.4, 1, 0.2);
         gridEl.setAttribute('collision-filter', {collisionForces: false});
         ClearPhysicsShapes(gridEl);
-        self.createPhysicsGrid(gridEl, sample.grid, CELL_SIZE);
+        self.createGridPhysics(gridEl, sample.grid, CELL_SIZE);
         // TODO shader material for grid
-        // var gridMesh = self.createGeometry(gridEl.body, null);
-        // gridEl.setObject3D("grid", gridMesh);
+        var gridMesh = self.createGridGeometry(gridEl.body, null);
+        gridEl.setObject3D("grid", gridMesh);
       })
       el.appendChild(gridEl);
 
@@ -64,7 +64,7 @@ AFRAME.registerComponent('puzzle-generator', {
   },
 
 
-  createPhysicsGrid: function(gridEl, gridLocs, gridCellSize) {
+  createGridPhysics: function(gridEl, gridLocs, gridCellSize) {
     var s = gridCellSize;
     console.log(s);
     var shape = new CANNON.Box(new CANNON.Vec3(0.5*s,0.5*s,0.5*s));
@@ -72,6 +72,40 @@ AFRAME.registerComponent('puzzle-generator', {
       var pos = cell.localPos;
       gridEl.body.addShape( shape, new CANNON.Vec3( pos.x*s, pos.y*s, pos.z*s));
     })
+  },
+
+
+  createGridGeometry : function(body, pieceColor){
+    var geom = new THREE.Geometry();
+    var material = new THREE.MeshBasicMaterial();
+
+    for (var l = 0; l < body.shapes.length; l++) {
+        var shape = body.shapes[l];
+
+        var mesh;
+
+        var box_geometry = new THREE.BoxGeometry(  shape.halfExtents.x*2,
+                                                        shape.halfExtents.y*2,
+                                                        shape.halfExtents.z*2 );
+            mesh = new THREE.Mesh( box_geometry, material );
+
+        var o = body.shapeOffsets[l];
+        var q = body.shapeOrientations[l];
+        mesh.position.set(o.x, o.y, o.z);
+        mesh.quaternion.set(q.x, q.y, q.z, q.w);
+
+        mesh.updateMatrix();
+        geom.merge(mesh.geometry, mesh.matrix);
+    }
+
+    // https://github.com/mrdoob/three.js/blob/master/examples/webgl_helpers.html
+    const edges = new THREE.EdgesGeometry( geom );
+    line = new THREE.LineSegments( edges );
+    line.material.depthTest = false;
+    line.material.opacity = 0.25;
+    line.material.transparent = true;
+    // line.material.linewidth = 4; // Doesn't work
+    return line;
   }
 });
 
