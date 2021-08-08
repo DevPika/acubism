@@ -35,7 +35,10 @@
                  super-hands="colliderEvent: collisions;
                               colliderEventProperty: els;
                               colliderEndEvent: collisions;
-                              colliderEndEventProperty: clearedEls;">
+                              colliderEndEventProperty: clearedEls;
+                              grabStartButtons: gripdown, triggerdown;
+                              grabEndButtons: gripup, triggerup">
+                        <!-- WARNING: Adding specific buttons for grab decreases compatibility compared to default super-hands setup -->
         </a-mixin>
         <a-mixin id="piece-body-init" hoverable grabbable 
                  stretchable draggable sleepy>
